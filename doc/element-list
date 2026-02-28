@@ -1,0 +1,7 @@
+com.univscheduler
+com.univscheduler.dao
+com.univscheduler.model
+com.univscheduler.model.enums
+com.univscheduler.service
+com.univscheduler.util
+com.univscheduler.view

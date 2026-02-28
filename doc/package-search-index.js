@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.univscheduler"},{"l":"com.univscheduler.dao"},{"l":"com.univscheduler.model"},{"l":"com.univscheduler.model.enums"},{"l":"com.univscheduler.service"},{"l":"com.univscheduler.util"},{"l":"com.univscheduler.view"}];updateSearchResults();
