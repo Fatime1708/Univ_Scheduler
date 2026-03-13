@@ -1,6 +1,7 @@
 package com.univscheduler.view;
 
 import com.univscheduler.model.Utilisateur;
+
 import com.univscheduler.util.DatabaseConnection;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;

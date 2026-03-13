@@ -36,18 +36,25 @@ public class LoginView extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        // Charger les utilisateurs depuis MySQL
+        
+        
         utilisateurs = utilisateurDAO.getTous();
-
+        System.out.println("✓ Utilisateurs chargés : " + utilisateurs.size());
+        
         BorderPane root = construireInterface(primaryStage);
+        System.out.println("✓ Interface construite");
+        
         Scene scene = new Scene(root, 800, 600);
-
+        System.out.println("✓ Scene créée");
+        
         primaryStage.setTitle("UNIV-SCHEDULER — Connexion");
         primaryStage.setScene(scene);
+        primaryStage.setX(100);
+        primaryStage.setY(100);
         primaryStage.setResizable(false);
         primaryStage.show();
+        System.out.println("✓ Fenêtre affichée");
     }
-
     // ════════════════════════════════════════════════════════════
     //  INTERFACE
     // ════════════════════════════════════════════════════════════
@@ -313,6 +320,10 @@ public class LoginView extends Application {
         b.setStyle("-fx-background-color:" + couleur + ";-fx-background-radius:20;");
         return b;
     }
+    public static void main(String[] args) {
+        launch(args);
+    }
+
 
     
     

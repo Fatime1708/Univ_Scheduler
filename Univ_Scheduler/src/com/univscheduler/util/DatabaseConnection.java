@@ -4,17 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-/**
- * Classe de connexion à la base de données MySQL.
- *
- * Utilise le pattern Singleton : une seule connexion est créée
- * et réutilisée partout dans l'application.
- *
- * ⚠️ Avant d'utiliser cette classe :
- *   1. Ajouter le driver MySQL (mysql-connector-j-8.x.jar) dans
- *      Build Path → Classpath de ton projet Eclipse
- *   2. Modifier URL, USER et PASSWORD selon ta configuration
- */
+
 public class DatabaseConnection {
 
     // ── Configuration ────────────────────────────────────────────
@@ -32,13 +22,7 @@ private static final String PASSWORD = "";
     // Constructeur privé : on ne peut pas faire "new DatabaseConnection()"
     private DatabaseConnection() {}
 
-    /**
-     * Retourne la connexion active.
-     * Si elle n'existe pas encore, elle est créée.
-     *
-     * Utilisation :
-     *   Connection conn = DatabaseConnection.getConnection();
-     */
+    
     public static Connection getConnection() {
         try {
             // Créer la connexion si elle n'existe pas ou si elle est fermée
@@ -76,10 +60,7 @@ private static final String PASSWORD = "";
         }
     }
 
-    /**
-     * Teste si la connexion fonctionne.
-     * Utile pour afficher un message d'erreur au démarrage.
-     */
+    
     public static boolean testerConnexion() {
         return getConnection() != null;
     }

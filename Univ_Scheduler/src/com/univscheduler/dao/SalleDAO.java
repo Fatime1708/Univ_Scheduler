@@ -2,6 +2,7 @@ package com.univscheduler.dao;
 
 import com.univscheduler.model.Salle;
 
+
 import com.univscheduler.model.enums.TypeSalle;
 import com.univscheduler.util.DatabaseConnection;
 
@@ -147,10 +148,6 @@ public class SalleDAO {
             System.err.println("Erreur ajouter() salle : " + e.getMessage());
         }
         return false;
-        
-     // Notifier tout le monde
-
-
     }
 
     // ── UPDATE : Modifier une salle ──────────────────────────────
