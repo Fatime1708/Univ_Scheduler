@@ -98,4 +98,20 @@ public class ConflitDAO {
         }
         return 0;
     }
+ // ── Ajouter un conflit depuis un signalement ──
+    public boolean ajouterDepuisSignalement(String type, String description, Integer coursId) {
+        String sql = "INSERT INTO conflits (type, description, cours1_id, resolu, created_at) "
+                   + "VALUES (?, ?, ?, 0, NOW())";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, type);
+            ps.setString(2, description);
+            if (coursId != null) ps.setInt(3, coursId);
+            else ps.setNull(3, Types.INTEGER);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Erreur ajouterDepuisSignalement() : " + e.getMessage());
+        }
+        return false;
+    }
 }

@@ -7,26 +7,25 @@ import java.util.List;
 
 public class SignalementDAO {
 
-    public boolean ajouter(String type, String description,
-                            int salleId, int enseignantId, Integer equipementId) {
-        String sql = "INSERT INTO signalements "
-                   + "(type, description, statut, salle_id, enseignant_id, equipement_id) "
-                   + "VALUES (?, ?, 'EN_ATTENTE', ?, ?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, type);
-            ps.setString(2, description);
-            ps.setInt(3, salleId);
-            ps.setInt(4, enseignantId);
-            if (equipementId != null) ps.setInt(5, equipementId);
-            else ps.setNull(5, Types.INTEGER);
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            System.err.println("Erreur ajouter() signalement : " + e.getMessage());
-        }
-        return false;
-    }
-
+	public boolean ajouter(String type, String description,
+            int salleId, int enseignantId, Integer equipementId) {
+String sql = "INSERT INTO signalements "
+   + "(type, description, statut, salle_id, enseignant_id, equipement_id) "
+   + "VALUES (?, ?, 'OUVERT', ?, ?, ?)";
+try (Connection conn = DatabaseConnection.getConnection();
+PreparedStatement ps = conn.prepareStatement(sql)) {
+ps.setString(1, type);
+ps.setString(2, description);
+ps.setInt(3, salleId);
+ps.setInt(4, enseignantId);
+if (equipementId != null) ps.setInt(5, equipementId);
+else ps.setNull(5, Types.INTEGER);
+return ps.executeUpdate() > 0;
+} catch (SQLException e) {
+System.err.println("Erreur ajouter() signalement : " + e.getMessage());
+}
+return false;
+}
     public List<String[]> getTous() {
         List<String[]> liste = new ArrayList<>();
         String sql = "SELECT s.id, s.type, s.description, s.statut, "

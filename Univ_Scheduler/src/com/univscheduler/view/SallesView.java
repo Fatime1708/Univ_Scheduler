@@ -353,17 +353,33 @@ public class SallesView {
                 } else {
                     Salle n = new Salle(fNum.getText(), cap, fType.getValue(), 1);
                     n.setDisponible(fDispo.isSelected());
-                    salleDAO.ajouter(n);
-                    com.univscheduler.dao.NotificationDAO notifDAO = 
-                            new com.univscheduler.dao.NotificationDAO();
+                    boolean ok = salleDAO.ajouter(n); // ← récupérer le résultat
+
+                    if (ok) {
+                        com.univscheduler.dao.NotificationDAO notifDAO =
+                                new com.univscheduler.dao.NotificationDAO();
                         notifDAO.ajouter(
                             "🏫 Nouvelle salle ajoutée",
                             "La salle " + n.getNumero() + " (" + n.getType() + ") a été ajoutée.",
                             "SALLE", "TOUS", null);
-                    sauvegarderEquipements(champsNom, champsDesc, n.getId(), equipementDAO);
-                    toutesLesSalles.add(n);
-                    listeSalles.add(n);
-                    rafraichirStatsDashboard();
+                        sauvegarderEquipements(champsNom, champsDesc, n.getId(), equipementDAO);
+
+                        // ✅ Recharger toute la liste depuis la BDD
+                        toutesLesSalles.clear();
+                        toutesLesSalles.addAll(salleDAO.getTous());
+                        listeSalles.setAll(toutesLesSalles);
+                        tableau.refresh();
+
+                        popup.close();
+
+                        Alert succes = new Alert(Alert.AlertType.INFORMATION);
+                        succes.setTitle("Succès");
+                        succes.setHeaderText(null);
+                        succes.setContentText("✅ Salle \"" + n.getNumero() + "\" ajoutée avec succès !");
+                        succes.showAndWait();
+                    } else {
+                        erreur.setText("❌ Erreur lors de l'ajout en base de données.");
+                    }
                 }
                 popup.close();
             } catch (NumberFormatException ex) {
@@ -442,10 +458,10 @@ public class SallesView {
 
     // ── Rafraîchit les stats dans le Dashboard ──────────────────────
     private void rafraichirStatsDashboard() {
-        // Recharger les salles depuis la BDD pour avoir le bon total
         toutesLesSalles.clear();
         toutesLesSalles.addAll(salleDAO.getTous());
         listeSalles.setAll(toutesLesSalles);
+        tableau.refresh();
     }
 
     // ════════════════════════════════════════════════════════════

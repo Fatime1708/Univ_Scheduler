@@ -95,8 +95,21 @@ public class SignalementView {
             comboEquip.getItems().clear();
             Salle salle = comboSalle.getValue();
             if (salle == null) return;
+
+            System.out.println("=== DEBUG ===");
+            System.out.println("Salle ID : " + salle.getId());
+            
             List<Equipement> equips = equipementDAO.getBySalle(salle.getId());
+            System.out.println("Équipements : " + equips.size());
+            
+            // ✅ Toujours charger, peu importe si visible ou non
             comboEquip.getItems().addAll(equips);
+            
+            if (equips.isEmpty()) {
+                comboEquip.setPromptText("Aucun équipement pour cette salle");
+            } else {
+                comboEquip.setPromptText("Choisir l'équipement en panne");
+            }
         });
 
         // Description
@@ -145,7 +158,6 @@ public class SignalementView {
                 equip != null ? equip.getId() : null
             );
 
-
             if (ok) {
                 msgSucces.setText("✅  Signalement envoyé avec succès !");
                 msgErreur.setText("");
@@ -163,19 +175,45 @@ public class SignalementView {
                     "Un problème a été signalé dans la salle " + salle.getNumero(),
                     "SIGNALEMENT", "GESTIONNAIRE", null);
 
+                // ── Créer un conflit si salle indisponible ──
+                if ("🚫 Salle indisponible".equals(comboType.getValue())) {
+                    ConflitDAO conflitDAO = new ConflitDAO();
+                    CoursDAO coursDAO = new CoursDAO();
+                    List<Cours> coursDeLaSalle = coursDAO.getParSalle(salle.getId());
+
+                    if (!coursDeLaSalle.isEmpty()) {
+                        for (Cours c : coursDeLaSalle) {
+                            conflitDAO.ajouterDepuisSignalement(
+                                "SALLE_INDISPONIBLE",
+                                "🚫 Salle " + salle.getNumero()
+                                    + " signalée indisponible par " + ens.getNomComplet()
+                                    + " — Cours affecté : " + c.getMatiere()
+                                    + " (" + c.getClasse() + ")",
+                                c.getId()
+                            );
+                        }
+                    } else {
+                        conflitDAO.ajouterDepuisSignalement(
+                            "SALLE_INDISPONIBLE",
+                            "🚫 Salle " + salle.getNumero()
+                                + " signalée indisponible par " + ens.getNomComplet(),
+                            null
+                        );
+                    }
+                }
+
                 // ── Marquer équipement en panne si applicable ──
                 if (equip != null) {
                     equip.setFonctionnel(false);
                 }
 
-                // ── Remettre à zéro le formulaire ──
+                // ── Réinitialiser le formulaire ──
                 comboType.setValue(null);
                 comboSalle.setValue(null);
                 comboEquip.getItems().clear();
                 taDesc.clear();
             }
-        });
-
+        }); // ← fin setOnAction
         form.getChildren().addAll(
             lblType, comboType,
             lblSalle, comboSalle,
@@ -184,6 +222,7 @@ public class SignalementView {
             msgErreur, msgSucces,
             btnEnvoyer
         );
+     
         return form;
     }
 }

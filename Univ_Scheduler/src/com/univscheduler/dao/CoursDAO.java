@@ -2,8 +2,13 @@ package com.univscheduler.dao;
 
 import com.univscheduler.model.*;
 import com.univscheduler.model.enums.TypeSalle;
+import com.univscheduler.model.Enseignant;
+import com.univscheduler.model.Creneau;
+import com.univscheduler.model.enums.TypeSalle;
 import com.univscheduler.util.DatabaseConnection;
-
+import com.univscheduler.model.Salle;
+import com.univscheduler.model.Cours;
+import com.univscheduler.model.Enseignant;
 import java.sql.*;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -30,7 +35,7 @@ public class CoursDAO {
                    + "cr.jour, cr.heure_debut, cr.duree_minutes "
                    + "FROM cours c "
                    + "JOIN utilisateurs u ON c.enseignant_id = u.id "
-                   + "LEFT JOIN enseignants e ON u.id = e.id "
+                   + "LEFT JOIN enseignants e ON u.id = e.utilisateur_id "
                    + "JOIN salles s    ON c.salle_id    = s.id "
                    + "JOIN creneaux cr ON c.creneau_id  = cr.id "
                    + "ORDER BY cr.jour, cr.heure_debut";
@@ -59,7 +64,7 @@ public class CoursDAO {
                    + "cr.jour, cr.heure_debut, cr.duree_minutes "
                    + "FROM cours c "
                    + "JOIN utilisateurs u ON c.enseignant_id = u.id "
-                   + "LEFT JOIN enseignants e ON u.id = e.id "
+                   + "LEFT JOIN enseignants e ON u.id = e.utilisateur_id "
                    + "JOIN salles s    ON c.salle_id    = s.id "
                    + "JOIN creneaux cr ON c.creneau_id  = cr.id "
                    + "WHERE c.classe = ? "
@@ -90,7 +95,7 @@ public class CoursDAO {
                    + "cr.jour, cr.heure_debut, cr.duree_minutes "
                    + "FROM cours c "
                    + "JOIN utilisateurs u ON c.enseignant_id = u.id "
-                   + "LEFT JOIN enseignants e ON u.id = e.id "
+                   +"LEFT JOIN enseignants e ON u.id = e.utilisateur_id "
                    + "JOIN salles s    ON c.salle_id    = s.id "
                    + "JOIN creneaux cr ON c.creneau_id  = cr.id "
                    + "WHERE c.enseignant_id = ? "
@@ -111,14 +116,14 @@ public class CoursDAO {
 
     // ── CREATE : Ajouter un cours ────────────────────────────────
     public boolean ajouter(Cours cours) {
-        // D'abord insérer le créneau
-        String sqlCreneau = "INSERT INTO creneaux (jour, heure_debut, duree_minutes) "
-                          + "VALUES (?, ?, ?)";
+        String sqlCreneau = "INSERT INTO creneaux (jour, heure_debut, duree, duree_minutes) "
+                          + "VALUES (?, ?, ?, ?)";
         String sqlCours   = "INSERT INTO cours (matiere, description, classe, groupe, "
-                          + "enseignant_id, salle_id, creneau_id) VALUES (?,?,?,?,?,?,?)";
+                          + "enseignant_id, salle_id, creneau_id, departement_id, ufr_id) "
+                          + "VALUES (?,?,?,?,?,?,?,?,?)";
 
         try (Connection conn = DatabaseConnection.getConnection()) {
-            conn.setAutoCommit(false); // Transaction : tout ou rien
+            conn.setAutoCommit(false);
 
             try {
                 // 1. Insérer le créneau
@@ -127,6 +132,7 @@ public class CoursDAO {
                 psCreneau.setString(1, cours.getCreneau().getJour());
                 psCreneau.setString(2, cours.getCreneau().getHeureDebut().toString());
                 psCreneau.setInt(3,    cours.getCreneau().getDureMinutes());
+                psCreneau.setInt(4,    cours.getCreneau().getDureMinutes());
                 psCreneau.executeUpdate();
 
                 int creneauId = 0;
@@ -143,26 +149,30 @@ public class CoursDAO {
                 psCours.setInt(5,    cours.getEnseignant().getId());
                 psCours.setInt(6,    cours.getSalle().getId());
                 psCours.setInt(7,    creneauId);
+                if (cours.getDepartementId() > 0)
+                    psCours.setInt(8, cours.getDepartementId());
+                else psCours.setNull(8, Types.INTEGER);
+                if (cours.getUfrId() > 0)
+                    psCours.setInt(9, cours.getUfrId());
+                else psCours.setNull(9, Types.INTEGER);
                 psCours.executeUpdate();
 
-                ResultSet cleCours = psCours.getGeneratedKeys();
-                if (cleCours.next()) cours.setId(cleCours.getInt(1));
-
-                conn.commit(); // Valider la transaction
-                System.out.println("✓ Cours ajouté : " + cours.getMatiere());
-                return true;
+                conn.commit(); // ✅ commit
+                return true;   // ✅ retourner true si succès
 
             } catch (SQLException e) {
-                conn.rollback(); // Annuler si erreur
-                System.err.println("Erreur ajouter() cours (rollback) : " + e.getMessage());
+                conn.rollback();
+                System.err.println("Erreur ajouter() cours : " + e.getMessage());
+                e.printStackTrace();
+                return false;
             }
 
         } catch (SQLException e) {
             System.err.println("Erreur connexion ajouter() cours : " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
-        return false;
     }
-
     // ── DELETE ───────────────────────────────────────────────────
     public boolean supprimer(int id) {
         String sql = "DELETE FROM cours WHERE id = ?";
@@ -244,7 +254,7 @@ public class CoursDAO {
                    + "cr.jour, cr.heure_debut, cr.duree_minutes "
                    + "FROM cours c "
                    + "JOIN utilisateurs u ON c.enseignant_id = u.id "
-                   + "LEFT JOIN enseignants e ON u.id = e.id "
+                   + "LEFT JOIN enseignants e ON u.id = e.utilisateur_id "
                    + "JOIN salles s    ON c.salle_id    = s.id "
                    + "JOIN creneaux cr ON c.creneau_id  = cr.id "
                    + "WHERE c.id = ?";
@@ -258,5 +268,59 @@ public class CoursDAO {
             System.err.println("Erreur getById() cours : " + e.getMessage());
         }
         return null;
+    }
+    public List<Cours> getParSalle(int salleId) {
+        List<Cours> liste = new ArrayList<>();
+        String sql = "SELECT c.*, "
+                   + "u.nom AS ens_nom, u.prenom AS ens_prenom, "
+                   + "u.email AS ens_email, u.mot_de_passe AS ens_mdp, "
+                   + "e.specialite, e.departement, "
+                   + "s.numero AS salle_num, s.capacite, s.type AS salle_type, "
+                   + "s.disponible, s.batiment_id, "
+                   + "cr.jour, cr.heure_debut, cr.duree_minutes "
+                   + "FROM cours c "
+                   + "JOIN utilisateurs u ON c.enseignant_id = u.id "
+                   + "LEFT JOIN enseignants e ON u.id = e.utilisateur_id "
+                   + "JOIN salles s ON c.salle_id = s.id "
+                   + "JOIN creneaux cr ON c.creneau_id = cr.id "
+                   + "WHERE c.salle_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, salleId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                liste.add(construireCours(rs)); // ← réutilise construireCours()
+            }
+        } catch (SQLException e) {
+            System.err.println("Erreur getParSalle() : " + e.getMessage());
+        }
+        return liste;
+    }
+    
+    public List<Cours> getParDepartement(int departementId) {
+        List<Cours> liste = new ArrayList<>();
+        String sql = "SELECT c.*, "
+                   + "u.nom AS ens_nom, u.prenom AS ens_prenom, "
+                   + "u.email AS ens_email, u.mot_de_passe AS ens_mdp, "
+                   + "e.specialite, e.departement, "
+                   + "s.numero AS salle_num, s.capacite, s.type AS salle_type, "
+                   + "s.disponible, s.batiment_id, "
+                   + "cr.jour, cr.heure_debut, cr.duree_minutes "
+                   + "FROM cours c "
+                   + "JOIN utilisateurs u ON c.enseignant_id = u.id "
+                   + "LEFT JOIN enseignants e ON u.id = e.utilisateur_id "
+                   + "JOIN salles s    ON c.salle_id    = s.id "
+                   + "JOIN creneaux cr ON c.creneau_id  = cr.id "
+                   + "WHERE c.departement_id = ? "
+                   + "ORDER BY cr.jour, cr.heure_debut";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, departementId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) liste.add(construireCours(rs));
+        } catch (SQLException e) {
+            System.err.println("Erreur getParDepartement() : " + e.getMessage());
+        }
+        return liste;
     }
 }

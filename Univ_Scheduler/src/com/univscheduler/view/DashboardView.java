@@ -124,6 +124,7 @@ public class DashboardView extends Application {
                          + "-fx-cursor: hand;");
 
         // Badge rouge avec le nombre
+     // Badge rouge avec le nombre
         Label badge = new Label(nbNonLues > 0 ? String.valueOf(nbNonLues) : "");
         badge.setFont(Font.font("Arial", FontWeight.BOLD, 9));
         badge.setTextFill(Color.WHITE);
@@ -133,7 +134,17 @@ public class DashboardView extends Application {
         badge.setVisible(nbNonLues > 0);
         StackPane.setAlignment(badge, Pos.TOP_RIGHT);
 
-        cloche.getChildren().addAll(btnCloche, badge);
+        // ✅ Point rouge si notifications non lues
+        if (nbNonLues > 0) {
+            Label point = new Label("●");
+            point.setTextFill(Color.web("#ff1744")); // ✅ rouge vif
+            point.setFont(Font.font(12));
+            point.setStyle("-fx-effect: dropshadow(gaussian, #ff1744, 6, 0.8, 0, 0);");
+            StackPane.setAlignment(point, Pos.TOP_RIGHT);
+            cloche.getChildren().addAll(btnCloche, point, badge);
+        } else {
+            cloche.getChildren().addAll(btnCloche, badge);
+        }
 
         // Popup notifications au clic
         btnCloche.setOnAction(e -> afficherPopupNotifications(btnCloche, notifDAO, badge));
@@ -350,14 +361,15 @@ public class DashboardView extends Application {
         labelMenu.setPadding(new Insets(0, 0, 10, 8));
 
         Button[] boutons = {
-            creerBoutonMenu("🏠", "Accueil",         true),
-            creerBoutonMenu("🏫", "Salles",          false),
-            creerBoutonMenu("📅", "Emploi du temps", false),
-            creerBoutonMenu("👥", "Utilisateurs",    false),
-            creerBoutonMenu("📊", "Rapports",        false),
-            creerBoutonMenu("⚠️",  "Conflits",        false),
-            creerBoutonMenu("🔧", "Signalements",    false),
-        };
+        	    creerBoutonMenu("🏠", "Accueil",         true),
+        	    creerBoutonMenu("🏫", "Salles",          false),
+        	    creerBoutonMenu("📅", "Emploi du temps", false),
+        	    creerBoutonMenu("👥", "Utilisateurs",    false),
+        	    creerBoutonMenu("📊", "Rapports",        false),
+        	    creerBoutonMenu("⚠️",  "Conflits",        false),
+        	    creerBoutonMenu("🔧", "Signalements",    false),
+        	    creerBoutonMenu("⭐", "Bloc des Plus",   false),
+        	};
 
         boutons[0].setOnAction(e -> { activerBouton(boutons, 0); afficherAccueil(); });
         boutons[1].setOnAction(e -> { activerBouton(boutons, 1); afficherSalles(); });
@@ -366,10 +378,25 @@ public class DashboardView extends Application {
         boutons[4].setOnAction(e -> { activerBouton(boutons, 4); afficherRapports(); });
         boutons[5].setOnAction(e -> { activerBouton(boutons, 5); afficherConflits(); });
         boutons[6].setOnAction(e -> { activerBouton(boutons, 6); afficherSignalements(); });
-
+        boutons[7].setOnAction(e -> {
+            activerBouton(boutons, 7);
+            contenuCentral.getChildren().clear();
+            new BlocPlusView((Enseignant) utilisateurConnecte).afficher();
+        });
         // Tout masquer par défaut selon le rôle
         String role = utilisateurConnecte.getRole();
+        if (role.equals("ENSEIGNANT")) {
+            boutons[3].setVisible(false); boutons[3].setManaged(false);
+            boutons[4].setVisible(false); boutons[4].setManaged(false);
+            boutons[5].setVisible(false); boutons[5].setManaged(false);
+            // ✅ déjà présent au dessus — ajouter :
+            boutons[7].setVisible(true);  boutons[7].setManaged(true); // Bloc des Plus visible
+        }
 
+        // Masquer pour tous les autres rôles
+        if (role.equals("ETUDIANT") || role.equals("ADMIN") || role.equals("GESTIONNAIRE")) {
+            boutons[7].setVisible(false); boutons[7].setManaged(false);
+        }
         if (role.equals("ETUDIANT")) {
             boutons[3].setVisible(false); boutons[3].setManaged(false);
             boutons[4].setVisible(false); boutons[4].setManaged(false);
@@ -377,9 +404,10 @@ public class DashboardView extends Application {
             boutons[6].setVisible(false); boutons[6].setManaged(false);
         }
         if (role.equals("ENSEIGNANT")) {
-            boutons[3].setVisible(false); boutons[3].setManaged(false);
-            boutons[4].setVisible(false); boutons[4].setManaged(false);
-            boutons[5].setVisible(false); boutons[5].setManaged(false);
+            boutons[3].setVisible(false); boutons[3].setManaged(false); // Utilisateurs
+            boutons[4].setVisible(false); boutons[4].setManaged(false); // Rapports
+            boutons[5].setVisible(false); boutons[5].setManaged(false); // Conflits
+            
         }
         if (role.equals("GESTIONNAIRE")) {
             boutons[3].setVisible(false); boutons[3].setManaged(false);
@@ -414,7 +442,6 @@ public class DashboardView extends Application {
     private void afficherAccueil() {
         contenuCentral.getChildren().clear();
 
-        // Titre de bienvenue
         Label titre = new Label("Bonjour, " + utilisateurConnecte.getPrenom() + " 👋");
         titre.setFont(Font.font("Arial", FontWeight.BOLD, 24));
         titre.setTextFill(Color.web("#1a237e"));
@@ -423,9 +450,7 @@ public class DashboardView extends Application {
         sousTitre.setFont(Font.font("Arial", 14));
         sousTitre.setTextFill(Color.web("#757575"));
 
-        // ── Cartes de statistiques ───────────────────────────────
-     
-     // ── Cartes de statistiques ───────────────────────────────
+        // ── Données ──
         com.univscheduler.dao.SalleDAO salleDAO = new com.univscheduler.dao.SalleDAO();
         com.univscheduler.dao.CoursDAO coursDAO = new com.univscheduler.dao.CoursDAO();
         List<Salle> sallesReelles = salleDAO.getTous();
@@ -433,14 +458,34 @@ public class DashboardView extends Application {
         long sallesLibres   = sallesReelles.stream().filter(Salle::isDisponible).count();
         long sallesOccupees = sallesReelles.size() - sallesLibres;
 
+        // ── Cartes selon le rôle ──
         HBox cartes = new HBox(16);
-        cartes.getChildren().addAll(
-            creerCarteStat("🏫", "Salles totales",    String.valueOf(sallesReelles.size()), "#1a237e", "#e8eaf6"),
-            creerCarteStat("✅", "Salles disponibles", String.valueOf(sallesLibres),         "#1b5e20", "#e8f5e9"),
-            creerCarteStat("🔴", "Salles occupées",   String.valueOf(sallesOccupees),        "#b71c1c", "#ffebee"),
-            creerCarteStat("📚", "Cours planifiés",   String.valueOf(coursReels.size()),     "#e65100", "#fff3e0"),
-            creerCarteStat("⚠️",  "Conflits détectés", String.valueOf(conflits.size()),      "#4a148c", "#f3e5f5")
-        );
+        String role = utilisateurConnecte.getRole();
+
+        if (role.equals("ENSEIGNANT")) {
+            List<Cours> mesCours = coursDAO.getParEnseignant(utilisateurConnecte.getId());
+            long nbSallesUtilisees = mesCours.stream()
+                .map(c -> c.getSalle().getId())
+                .distinct().count();
+
+            cartes.getChildren().addAll(
+                creerCarteStat("📚", "Mes cours",          String.valueOf(mesCours.size()),   "#1a237e", "#e8eaf6"),
+                creerCarteStat("🏫", "Salles utilisées",   String.valueOf(nbSallesUtilisees), "#1b5e20", "#e8f5e9"),
+                creerCarteStat("✅", "Salles disponibles", String.valueOf(sallesLibres),       "#e65100", "#fff3e0"),
+                creerCarteStat("🔴", "Salles occupées",    String.valueOf(sallesOccupees),     "#b71c1c", "#ffebee"),
+                creerCarteStat("⚠️",  "Conflits détectés", String.valueOf(conflits.size()),   "#4a148c", "#f3e5f5")
+            );
+        } else {
+            cartes.getChildren().addAll(
+                creerCarteStat("🏫", "Salles totales",     String.valueOf(sallesReelles.size()), "#1a237e", "#e8eaf6"),
+                creerCarteStat("✅", "Salles disponibles", String.valueOf(sallesLibres),          "#1b5e20", "#e8f5e9"),
+                creerCarteStat("🔴", "Salles occupées",    String.valueOf(sallesOccupees),         "#b71c1c", "#ffebee"),
+                creerCarteStat("📚", "Cours planifiés",    String.valueOf(coursReels.size()),      "#e65100", "#fff3e0"),
+                creerCarteStat("⚠️",  "Conflits détectés", String.valueOf(conflits.size()),       "#4a148c", "#f3e5f5")
+            );
+        }
+
+        // ── Section conflits ──
         VBox sectionConflits = new VBox(10);
         Label titreConflits = new Label("⚠️  Conflits détectés");
         titreConflits.setFont(Font.font("Arial", FontWeight.BOLD, 16));
@@ -470,51 +515,80 @@ public class DashboardView extends Application {
             }
         }
 
-        // ── Liste des cours du jour ──────────────────────────────
+        // ── Section cours ──
+     // ── Section cours d'aujourd'hui ──
         VBox sectionCours = new VBox(10);
         Label titreCours = new Label("📅  Cours d'aujourd'hui");
         titreCours.setFont(Font.font("Arial", FontWeight.BOLD, 16));
         titreCours.setTextFill(Color.web("#1a237e"));
-
         sectionCours.getChildren().add(titreCours);
+
+        // ✅ Charger depuis la BDD selon le rôle
+        com.univscheduler.dao.CoursDAO coursDAO2 = new com.univscheduler.dao.CoursDAO();
+        String jourBrut = java.time.LocalDate.now()
+        	    .getDayOfWeek()
+        	    .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.FRENCH);
+
+        	final String jourAujourdhui = jourBrut.substring(0, 1).toUpperCase() 
+        	                            + jourBrut.substring(1);
+        List<Cours> coursAujourdhui;
+        if (utilisateurConnecte.getRole().equals("ENSEIGNANT")) {
+            coursAujourdhui = coursDAO2.getParEnseignant(utilisateurConnecte.getId())
+                .stream()
+                .filter(c -> c.getCreneau().getJour().equalsIgnoreCase(jourAujourdhui))
+                .collect(java.util.stream.Collectors.toList());
+        } else {
+            coursAujourdhui = coursDAO2.getTous()
+                .stream()
+                .filter(c -> c.getCreneau().getJour().equalsIgnoreCase(jourAujourdhui))
+                .collect(java.util.stream.Collectors.toList());
+        }
 
         String[] couleurs = {"#e8eaf6", "#e8f5e9", "#fff3e0", "#fce4ec", "#e0f7fa"};
         String[] bordures = {"#3949ab", "#43a047", "#fb8c00", "#e91e63", "#00acc1"};
-        int i = 0;
-        for (Cours c : cours) {
-            HBox ligneC = new HBox(16);
-            ligneC.setPadding(new Insets(12, 16, 12, 16));
-            ligneC.setAlignment(Pos.CENTER_LEFT);
-            ligneC.setStyle("-fx-background-color: " + couleurs[i % couleurs.length] + ";"
-                          + "-fx-background-radius: 8;"
-                          + "-fx-border-color: " + bordures[i % bordures.length] + ";"
-                          + "-fx-border-radius: 8;"
-                          + "-fx-border-width: 0 0 0 4;");
 
-            Label mat   = new Label(c.getMatiere());
-            mat.setFont(Font.font("Arial", FontWeight.BOLD, 13));
-            mat.setMinWidth(150);
+        if (coursAujourdhui.isEmpty()) {
+            Label aucun = new Label("✅  Aucun cours prévu aujourd'hui (" + jourAujourdhui + ")");
+            aucun.setFont(Font.font("Arial", 13));
+            aucun.setTextFill(Color.web("#388e3c"));
+            aucun.setPadding(new Insets(16));
+            aucun.setStyle("-fx-background-color: #e8f5e9; -fx-background-radius: 8;");
+            sectionCours.getChildren().add(aucun);
+        } else {
+            int i = 0;
+            for (Cours c : coursAujourdhui) {
+                HBox ligneC = new HBox(16);
+                ligneC.setPadding(new Insets(12, 16, 12, 16));
+                ligneC.setAlignment(Pos.CENTER_LEFT);
+                ligneC.setStyle("-fx-background-color: " + couleurs[i % couleurs.length] + ";"
+                              + "-fx-background-radius: 8;"
+                              + "-fx-border-color: " + bordures[i % bordures.length] + ";"
+                              + "-fx-border-radius: 8;"
+                              + "-fx-border-width: 0 0 0 4;");
 
-            Label salle = new Label("📍 " + c.getSalle().getNumero());
-            salle.setFont(Font.font("Arial", 12));
-            salle.setMinWidth(80);
+                Label mat = new Label(c.getMatiere());
+                mat.setFont(Font.font("Arial", FontWeight.BOLD, 13));
+                mat.setMinWidth(150);
 
-            Label heure = new Label("🕐 " + c.getCreneau());
-            heure.setFont(Font.font("Arial", 12));
-            heure.setMinWidth(160);
+                Label salle = new Label("📍 " + c.getSalle().getNumero());
+                salle.setFont(Font.font("Arial", 12));
+                salle.setMinWidth(80);
 
-            Label ens = new Label("👤 " + c.getEnseignant().getNomComplet());
-            ens.setFont(Font.font("Arial", 12));
+                Label heure = new Label("🕐 " + c.getCreneau());
+                heure.setFont(Font.font("Arial", 12));
+                heure.setMinWidth(160);
 
-            ligneC.getChildren().addAll(mat, salle, heure, ens);
-            sectionCours.getChildren().add(ligneC);
-            i++;
-        }
+                Label ens = new Label("👤 " + c.getEnseignant().getNomComplet());
+                ens.setFont(Font.font("Arial", 12));
 
+                ligneC.getChildren().addAll(mat, salle, heure, ens);
+                sectionCours.getChildren().add(ligneC);
+                i++;
+            }
+        } 
         contenuCentral.getChildren().addAll(
                 titre, sousTitre, cartes, sectionConflits, sectionCours);
     }
-
     /** Page Salles — intègre SallesView */
     private void afficherSalles() {
         contenuCentral.getChildren().clear();

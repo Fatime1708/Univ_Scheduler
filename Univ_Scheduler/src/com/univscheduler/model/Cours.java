@@ -33,6 +33,14 @@ public class Cours {
         this.creneau = creneau;
         this.etudiants = new ArrayList<>();
     }
+    private int departementId;
+    private int ufrId;
+
+    public int getDepartementId() { return departementId; }
+    public void setDepartementId(int departementId) { this.departementId = departementId; }
+
+    public int getUfrId() { return ufrId; }
+    public void setUfrId(int ufrId) { this.ufrId = ufrId; }
 
     // ── Méthodes ────────────────────────────────────────────────
 

@@ -118,28 +118,27 @@ public class SalleDAO {
      * Insère une nouvelle salle dans la base.
      * @return true si l'insertion a réussi
      */
+   
+ // ✅ ajouter()
     public boolean ajouter(Salle salle) {
-        String sql = "INSERT INTO salles (numero, capacite, type, disponible, batiment_id) "
-                   + "VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO salles (nom, numero, capacite, type, disponible, batiment_id) "
+                   + "VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql,
                      Statement.RETURN_GENERATED_KEYS)) {
 
-            ps.setString(1, salle.getNumero());
-            ps.setInt(2,    salle.getCapacite());
-            ps.setString(3, salle.getType().name());
-            ps.setBoolean(4,salle.isDisponible());
-            ps.setInt(5,    salle.getBatimentId());
+            ps.setString(1, salle.getNumero()); // nom = numero
+            ps.setString(2, salle.getNumero()); // numero
+            ps.setInt(3,    salle.getCapacite());
+            ps.setString(4, salle.getType().name());
+            ps.setBoolean(5,salle.isDisponible());
+            ps.setInt(6,    salle.getBatimentId());
 
             int lignes = ps.executeUpdate();
-
-            // Récupérer l'ID généré automatiquement
             if (lignes > 0) {
                 ResultSet cleGeneree = ps.getGeneratedKeys();
-                if (cleGeneree.next()) {
-                    salle.setId(cleGeneree.getInt(1));
-                }
+                if (cleGeneree.next()) salle.setId(cleGeneree.getInt(1));
                 System.out.println("✓ Salle ajoutée : " + salle.getNumero());
                 return true;
             }
@@ -151,19 +150,21 @@ public class SalleDAO {
     }
 
     // ── UPDATE : Modifier une salle ──────────────────────────────
+ // ✅ modifier()
     public boolean modifier(Salle salle) {
-        String sql = "UPDATE salles SET numero=?, capacite=?, type=?, "
+        String sql = "UPDATE salles SET nom=?, numero=?, capacite=?, type=?, "
                    + "disponible=?, batiment_id=? WHERE id=?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1,  salle.getNumero());
-            ps.setInt(2,     salle.getCapacite());
-            ps.setString(3,  salle.getType().name());
-            ps.setBoolean(4, salle.isDisponible());
-            ps.setInt(5,     salle.getBatimentId());
-            ps.setInt(6,     salle.getId());
+            ps.setString(1,  salle.getNumero()); // nom
+            ps.setString(2,  salle.getNumero()); // numero
+            ps.setInt(3,     salle.getCapacite());
+            ps.setString(4,  salle.getType().name());
+            ps.setBoolean(5, salle.isDisponible());
+            ps.setInt(6,     salle.getBatimentId());
+            ps.setInt(7,     salle.getId());
 
             boolean ok = ps.executeUpdate() > 0;
             if (ok) System.out.println("✓ Salle modifiée : " + salle.getNumero());
@@ -174,7 +175,6 @@ public class SalleDAO {
         }
         return false;
     }
-
     // ── DELETE : Supprimer une salle ─────────────────────────────
     public boolean supprimer(int id) {
         String sql = "DELETE FROM salles WHERE id = ?";

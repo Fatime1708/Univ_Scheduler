@@ -1,6 +1,8 @@
 package com.univscheduler.view;
 
 import com.univscheduler.util.DatabaseConnection;
+import com.univscheduler.dao.UfrDAO;
+import com.univscheduler.dao.DepartementDAO;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -22,8 +24,13 @@ public class InscriptionView extends Application {
     private PasswordField champMdpConfirm;
     private TextField     champNumEtudiant;
     private ComboBox<String> comboClasse;
+    private ComboBox<String> comboUfr;          // ✅ ajouter
+    private ComboBox<String> comboDepartement;  // ✅ ajouter
     private Label         messageErreur;
     private Label         messageSucces;
+
+    private final UfrDAO ufrDAO               = new UfrDAO();          // ✅ ajouter
+    private final DepartementDAO departementDAO = new DepartementDAO(); // ✅ ajouter
 
     @Override
     public void start(Stage stage) {
@@ -126,13 +133,54 @@ public class InscriptionView extends Application {
         champMdpConfirm.setPromptText("Confirmer le mot de passe");
         champMdpConfirm.setStyle(styleChamp());
 
+     // UFR
+        comboUfr = new ComboBox<>();
+        comboUfr.setPromptText("Choisir votre UFR");
+        comboUfr.setMaxWidth(Double.MAX_VALUE);
+        comboUfr.setStyle(styleChamp());
+
+        // Charger les UFR depuis la BDD
+        for (String[] ufr : ufrDAO.getTous()) {
+            comboUfr.getItems().add(ufr[0] + "|" + ufr[1] + " — " + ufr[2]);
+        }
+
+        // Département (se remplit quand UFR change)
+        comboDepartement = new ComboBox<>();
+        comboDepartement.setPromptText("Choisissez d'abord une UFR");
+        comboDepartement.setMaxWidth(Double.MAX_VALUE);
+        comboDepartement.setStyle(styleChamp());
+        comboDepartement.setDisable(true);
+
+        // Cascade UFR → Département
+        comboUfr.setOnAction(e -> {
+            comboDepartement.getItems().clear();
+            comboDepartement.setDisable(true);
+            String val = comboUfr.getValue();
+            if (val == null) return;
+            int ufrId = Integer.parseInt(val.split("\\|")[0]);
+            for (String[] dep : departementDAO.getParUfr(ufrId)) {
+                comboDepartement.getItems().add(dep[0] + "|" + dep[1]);
+            }
+            comboDepartement.setDisable(false);
+            comboDepartement.setPromptText("Choisir votre département");
+
+            // Mettre à jour les classes selon l'UFR choisie
+            comboClasse.getItems().clear();
+            String code = val.split("\\|")[1].split(" ")[0]; // "SET" ou "SESS"
+            if (code.equals("SET")) {
+                comboClasse.getItems().addAll(
+                    "L1", "L2", "L3", "M1", "M2"
+                );
+            } else {
+                comboClasse.getItems().addAll(
+                    "L1", "L2", "L3", "M1", "M2"
+                );
+            }
+        });
+
         // Classe
         comboClasse = new ComboBox<>();
-        comboClasse.getItems().addAll(
-            "L1 Informatique", "L2 Informatique", "L3 Informatique",
-            "M1 Informatique", "M2 Informatique"
-        );
-        comboClasse.setPromptText("Choisir votre classe");
+        comboClasse.setPromptText("Choisir votre niveau");
         comboClasse.setMaxWidth(Double.MAX_VALUE);
         comboClasse.setStyle(styleChamp());
 
@@ -175,18 +223,19 @@ public class InscriptionView extends Application {
         });
 
         formulaire.getChildren().addAll(
-            titreForm, sousTitre, new Separator(),
-            new Label("Nom :"),               champNom,
-            new Label("Prénom :"),            champPrenom,
-            new Label("Email :"),             champEmail,
-            new Label("Numéro étudiant :"),   champNumEtudiant,
-            new Label("Classe :"),            comboClasse,
-            new Label("Mot de passe :"),      champMdp,
-            new Label("Confirmer :"),         champMdpConfirm,
-            messageErreur, messageSucces,
-            btnInscrire, btnRetour
-        );
-
+        	    titreForm, sousTitre, new Separator(),
+        	    new Label("Nom :"),               champNom,
+        	    new Label("Prénom :"),            champPrenom,
+        	    new Label("Email :"),             champEmail,
+        	    new Label("Numéro étudiant :"),   champNumEtudiant,
+        	    new Label("UFR :"),               comboUfr,
+        	    new Label("Département :"),       comboDepartement,
+        	    new Label("Niveau :"),            comboClasse,
+        	    new Label("Mot de passe :"),      champMdp,
+        	    new Label("Confirmer :"),         champMdpConfirm,
+        	    messageErreur, messageSucces,
+        	    btnInscrire, btnRetour
+        	);
         ScrollPane scroll = new ScrollPane(formulaire);
         scroll.setFitToWidth(true);
         scroll.setStyle("-fx-background-color: #f5f5f5; -fx-background: #f5f5f5;");

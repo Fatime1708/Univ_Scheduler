@@ -24,6 +24,7 @@ public class Etudiant extends Utilisateur {
     public String getInfosRole() {
         return "Étudiant - " + classe + " | " + groupe + " | N°" + numeroEtudiant;
     }
+    
 
     // ── Getters & Setters ───────────────────────────────────────
     public String getClasse() { return classe; }
@@ -34,4 +35,8 @@ public class Etudiant extends Utilisateur {
 
     public String getNumeroEtudiant() { return numeroEtudiant; }
     public void setNumeroEtudiant(String numeroEtudiant) { this.numeroEtudiant = numeroEtudiant; }
+    private int departementId;
+
+    public int getDepartementId() { return departementId; }
+    public void setDepartementId(int departementId) { this.departementId = departementId; }
 }

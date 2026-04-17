@@ -1,5 +1,7 @@
 package com.univscheduler.view;
 import com.univscheduler.dao.SalleDAO;
+import com.univscheduler.dao.UfrDAO;
+import com.univscheduler.dao.DepartementDAO;
 import com.univscheduler.dao.NotificationDAO;
 import com.univscheduler.dao.UtilisateurDAO;
 import com.univscheduler.model.Etudiant;
@@ -28,6 +30,7 @@ import java.time.LocalTime;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.univscheduler.service.EmailService;
 
 
 
@@ -50,13 +53,13 @@ public class EmploiDuTempsView {
 
     // Couleurs des cours (une par matière)
     private static final String[] COULEURS_FOND = {
-        "#e8eaf6", "#e8f5e9", "#fff3e0", "#fce4ec",
-        "#e0f7fa", "#f3e5f5", "#fff8e1"
-    };
-    private static final String[] COULEURS_BORD = {
-        "#3949ab", "#43a047", "#fb8c00", "#e91e63",
-        "#00acc1", "#8e24aa", "#f9a825"
-    };
+    	    "#c5cae9", "#c8e6c9", "#ffe0b2", "#f8bbd0",
+    	    "#b2ebf2", "#e1bee7", "#fff9c4"
+    	};
+    	private static final String[] COULEURS_BORD = {
+    	    "#1a237e", "#1b5e20", "#e65100", "#880e4f",
+    	    "#006064", "#4a148c", "#f57f17"
+    	};
 
     // ── Composants ───────────────────────────────────────────────
     private GridPane grille;
@@ -246,6 +249,7 @@ public class EmploiDuTempsView {
         }
         return grille;
     }
+    
 
     /** Crée une cellule affichant un cours */
     private VBox creerCelluleCours(Cours cours, int index) {
@@ -258,33 +262,28 @@ public class EmploiDuTempsView {
           + "-fx-border-color: "      + COULEURS_BORD[index % COULEURS_BORD.length] + ";"
           + "-fx-border-radius: 8;"
           + "-fx-border-width: 0 0 0 4;"
+          + "-fx-opacity: 1.0;"
           + "-fx-cursor: hand;");
 
-        // Matière
+       
+
         Label matiere = new Label(cours.getMatiere());
         matiere.setFont(Font.font("Arial", FontWeight.BOLD, 11));
-        matiere.setTextFill(Color.web(COULEURS_BORD[index % COULEURS_BORD.length]));
+        matiere.setTextFill(Color.web("#000000")); // ← noir pur
 
-        // Classe (ex: LGI1, L2 Informatique...)
-     // Classe
         Label classe = new Label("🎓 " + cours.getClasse());
         classe.setFont(Font.font("Arial", FontWeight.BOLD, 10));
-        classe.setTextFill(Color.web("#1a237e"));
+        classe.setTextFill(Color.web("#000000")); // ← noir pur
 
-        // Salle avec ID
-        Label salle = new Label("📍 Salle : " + cours.getSalle().getId()
-                + " — " + cours.getSalle().getNumero());
+        Label salle = new Label("📍 " + cours.getSalle().getNumero());
         salle.setFont(Font.font("Arial", FontWeight.BOLD, 10));
-        salle.setTextFill(Color.web("#c62828"));
+        salle.setTextFill(Color.web("#000000")); // ← noir pur
 
-        // Enseignant
         Label enseignant = new Label("👤 " + cours.getEnseignant().getNom());
-        enseignant.setFont(Font.font("Arial", 9));
-        enseignant.setTextFill(Color.web("#616161"));
-
+        enseignant.setFont(Font.font("Arial", FontWeight.BOLD, 9));
+        enseignant.setTextFill(Color.web("#000000")); // ← noir pur
         cellule.getChildren().addAll(matiere, classe, salle, enseignant);
 
-        // Clic → afficher les détails du cours
         cellule.setOnMouseClicked(e -> afficherDetailsCours(cours));
         cellule.setOnMouseEntered(e -> cellule.setStyle(
             "-fx-background-color: " + COULEURS_BORD[index % COULEURS_BORD.length] + "22;"
@@ -303,7 +302,6 @@ public class EmploiDuTempsView {
 
         return cellule;
     }
-
     /** Crée une cellule vide (créneau libre) */
     private VBox creerCelluleVide(String jour, int heure) {
         VBox cellule = new VBox();
@@ -336,6 +334,7 @@ public class EmploiDuTempsView {
     }
 
     // ── Détails d'un cours (popup) ────────────────────────────────
+    
     private void afficherDetailsCours(Cours cours) {
         Stage popup = new Stage();
         popup.setTitle("Détails du cours");
@@ -352,24 +351,25 @@ public class EmploiDuTempsView {
 
         contenu.getChildren().addAll(
             titre,
-            creerLigneDetail("🎓 Classe",       cours.getClasse() + " — " + cours.getGroupe()),
-            creerLigneDetail("👤 Enseignant",    cours.getEnseignant().getNomComplet()),
-            creerLigneDetail("📍 Salle",         cours.getSalle().getNumero()
+            creerLigneDetail("🎓 Classe",    cours.getClasse() + " — " + cours.getGroupe()),
+            creerLigneDetail("👤 Enseignant", cours.getEnseignant().getNomComplet()),
+            creerLigneDetail("📍 Salle",      cours.getSalle().getNumero()
                     + " (" + cours.getSalle().getType() + " — "
                     + cours.getSalle().getCapacite() + " places)"),
-            creerLigneDetail("🕐 Créneau",       cours.getCreneau().toString()),
-            creerLigneDetail("⏱  Durée",         cours.getCreneau().getDureMinutes() + " minutes")
+            creerLigneDetail("🕐 Créneau",    cours.getCreneau().toString()),
+            creerLigneDetail("⏱  Durée",      cours.getCreneau().getDureMinutes() + " minutes")
         );
-     // Bouton annulation — visible uniquement pour l'enseignant propriétaire
-        boolean estProprietaire = DashboardView.utilisateurConnecte instanceof Enseignant
-            && DashboardView.utilisateurConnecte.getId() == cours.getEnseignant().getId();
 
-        if (estProprietaire) {
+        boolean estEnseignant = DashboardView.utilisateurConnecte instanceof Enseignant;
+
+        if (estEnseignant) {
             Button btnAnnuler = new Button("❌  Annuler ce cours");
             btnAnnuler.setMaxWidth(Double.MAX_VALUE);
-            btnAnnuler.setStyle("-fx-background-color:#c62828;-fx-text-fill:white;"
-                              + "-fx-background-radius:8;-fx-cursor:hand;"
-                              + "-fx-font-weight:bold;");
+            btnAnnuler.setStyle(
+                "-fx-background-color: #c62828; -fx-text-fill: white;"
+              + "-fx-background-radius: 8; -fx-cursor: hand;"
+              + "-fx-font-weight: bold;");
+
             btnAnnuler.setOnAction(ev -> {
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
                 confirm.setTitle("Annuler le cours");
@@ -380,7 +380,6 @@ public class EmploiDuTempsView {
                         CoursDAO coursDAO = new CoursDAO();
                         boolean ok = coursDAO.supprimer(cours.getId());
                         if (ok) {
-                            // ── Notifier tous les étudiants ──
                             UtilisateurDAO utilisateurDAO = new UtilisateurDAO();
                             List<Etudiant> etudiants = utilisateurDAO.getTousEtudiants();
                             NotificationDAO notifDAO = new NotificationDAO();
@@ -395,29 +394,57 @@ public class EmploiDuTempsView {
                                         + " a été annulé.",
                                     "COURS", "ETUDIANT", etu.getId()
                                 );
+                                EmailService.envoyerEmail(
+                                    etu.getEmail(),
+                                    "❌ Cours annulé — " + cours.getMatiere(),
+                                    "Bonjour " + etu.getPrenom() + ",\n\n"
+                                        + "Le cours suivant a été annulé :\n"
+                                        + "• Matière : " + cours.getMatiere() + "\n"
+                                        + "• Classe  : " + cours.getClasse() + "\n"
+                                        + "• Groupe  : " + cours.getGroupe() + "\n"
+                                        + "• Jour    : " + cours.getCreneau().getJour() + "\n"
+                                        + "• Heure   : " + cours.getCreneau().getHeureDebut() + "\n\n"
+                                        + "Cordialement,\nUNIV-SCHEDULER"
+                                );
                             }
 
                             tousLesCours.remove(cours);
-                            rafraichirGrille();
                             popup.close();
+                            chargerDepuisBDD();
+                            rafraichirGrille();
+
+                            Alert succes = new Alert(Alert.AlertType.INFORMATION);
+                            succes.setTitle("Cours annulé");
+                            succes.setHeaderText(null);
+                            succes.setContentText("✅ Le cours \"" + cours.getMatiere() + "\" a été annulé !");
+                            succes.showAndWait();
+
+                        } else {
+                            Alert erreur = new Alert(Alert.AlertType.ERROR);
+                            erreur.setTitle("Erreur");
+                            erreur.setHeaderText(null);
+                            erreur.setContentText("❌ Erreur lors de l'annulation du cours.");
+                            erreur.showAndWait();
                         }
                     }
-                });
-            });
-            contenu.getChildren().add(btnAnnuler);
-        } 
+                }); // ← fin ifPresent
+            }); // ← fin setOnAction
 
-        // Bouton fermer
+            contenu.getChildren().add(btnAnnuler);
+        } // ← fin if estEnseignant
+
         Button btnFermer = new Button("Fermer");
         btnFermer.setMaxWidth(Double.MAX_VALUE);
-        btnFermer.setStyle("-fx-background-color: #1a237e; -fx-text-fill: white;"
-                         + "-fx-background-radius: 8; -fx-cursor: hand;");
+        btnFermer.setStyle(
+            "-fx-background-color: #1a237e; -fx-text-fill: white;"
+          + "-fx-background-radius: 8; -fx-cursor: hand;");
         btnFermer.setOnAction(e -> popup.close());
         contenu.getChildren().add(btnFermer);
 
         popup.setScene(new Scene(contenu));
         popup.show();
-    }
+    } // ← fin afficherDetailsCours
+        
 
     /** Formulaire d'ajout d'un nouveau cours */
    
@@ -436,8 +463,55 @@ public class EmploiDuTempsView {
         titre.setTextFill(Color.web("#1a237e"));
 
         TextField champMatiere = creerChampTexte("Matière (ex: Algorithmique)");
-        TextField champClasse  = creerChampTexte("Classe (ex: L2 Informatique)");
-        TextField champGroupe  = creerChampTexte("Groupe (ex: Groupe A)");
+     // ── UFR ──
+        Label lblUfr = new Label("UFR :");
+        lblUfr.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        ComboBox<String> comboUfr = new ComboBox<>();
+        comboUfr.setPromptText("Choisir l'UFR");
+        comboUfr.setMaxWidth(Double.MAX_VALUE);
+        UfrDAO ufrDAO = new UfrDAO();
+        for (String[] ufr : ufrDAO.getTous()) {
+            comboUfr.getItems().add(ufr[0] + "|" + ufr[1] + " — " + ufr[2]);
+        }
+
+        // ── Département ──
+        Label lblDep = new Label("Département :");
+        lblDep.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        ComboBox<String> comboDep = new ComboBox<>();
+        comboDep.setPromptText("Choisissez d'abord une UFR");
+        comboDep.setMaxWidth(Double.MAX_VALUE);
+        comboDep.setDisable(true);
+
+        // ── Niveau ──
+        Label lblNiveau = new Label("Niveau :");
+        lblNiveau.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        ComboBox<String> comboNiveau = new ComboBox<>();
+        comboNiveau.getItems().addAll("L1", "L2", "L3", "M1", "M2");
+        comboNiveau.setPromptText("Choisir le niveau");
+        comboNiveau.setMaxWidth(Double.MAX_VALUE);
+
+        // ── Groupe ──
+        Label lblGroupe = new Label("Groupe :");
+        lblGroupe.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        ComboBox<String> comboGroupe = new ComboBox<>();
+        comboGroupe.getItems().addAll("Groupe A", "Groupe B", "Groupe C");
+        comboGroupe.setPromptText("Choisir le groupe");
+        comboGroupe.setMaxWidth(Double.MAX_VALUE);
+
+        // ── Cascade UFR → Département ──
+        DepartementDAO depDAO = new DepartementDAO();
+        comboUfr.setOnAction(e -> {
+            comboDep.getItems().clear();
+            comboDep.setDisable(true);
+            String val = comboUfr.getValue();
+            if (val == null) return;
+            int ufrId = Integer.parseInt(val.split("\\|")[0]);
+            for (String[] dep : depDAO.getParUfr(ufrId)) {
+                comboDep.getItems().add(dep[0] + "|" + dep[1]);
+            }
+            comboDep.setDisable(false);
+            comboDep.setPromptText("Choisir le département");
+        });
 
         ComboBox<String> selectJour = new ComboBox<>();
         selectJour.getItems().addAll(JOURS);
@@ -447,7 +521,7 @@ public class EmploiDuTempsView {
         TextField champHeure = creerChampTexte("Heure de début (ex: 08:00)");
         TextField champDuree = creerChampTexte("Durée en minutes (ex: 120)");
 
-        // ── Salle : ComboBox des salles disponibles ──
+        // ── Salle ──
         Label lblSalle = new Label("Salle :");
         lblSalle.setFont(Font.font("Arial", FontWeight.BOLD, 12));
 
@@ -465,7 +539,7 @@ public class EmploiDuTempsView {
             @Override public Salle fromString(String s) { return null; }
         });
 
-        // ── Zone équipements ──
+        // ── Équipements ──
         Label lblEquip = new Label("🔧 Équipements de la salle :");
         lblEquip.setFont(Font.font("Arial", FontWeight.BOLD, 12));
 
@@ -482,7 +556,7 @@ public class EmploiDuTempsView {
         lblAucun.setFont(Font.font("Arial", 11));
         boxEquipements.getChildren().add(lblAucun);
 
-        // Charger équipements quand salle change
+        // ── Quand salle change ──
         comboSalle.setOnAction(e -> {
             boxEquipements.getChildren().clear();
             Salle salleChoisie = comboSalle.getValue();
@@ -490,52 +564,86 @@ public class EmploiDuTempsView {
                 boxEquipements.getChildren().add(lblAucun);
                 return;
             }
-            // Charger équipements depuis la BDD
-            String sql = "SELECT nom, description, fonctionnel "
-                       + "FROM equipements WHERE salle_id = ?";
-            try (java.sql.Connection conn = com.univscheduler.util.DatabaseConnection.getConnection();
-                 java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, salleChoisie.getId());
-                java.sql.ResultSet rs = ps.executeQuery();
-                boolean aucunEquip = true;
-                while (rs.next()) {
-                    aucunEquip = false;
-                    String nom         = rs.getString("nom");
-                    String description = rs.getString("description");
-                    boolean fonctionnel = rs.getBoolean("fonctionnel");
-                    String icone = fonctionnel ? "✅" : "❌";
-                    String texte = icone + " " + nom;
-                    if (description != null && !description.isEmpty())
-                        texte += " — " + description;
+
+            com.univscheduler.dao.EquipementDAO equipDAO = new com.univscheduler.dao.EquipementDAO();
+            List<com.univscheduler.model.Equipement> equips = equipDAO.getBySalle(salleChoisie.getId());
+
+            if (equips.isEmpty()) {
+                Label l = new Label("Aucun équipement enregistré pour cette salle");
+                l.setTextFill(Color.GRAY);
+                l.setFont(Font.font("Arial", 11));
+                boxEquipements.getChildren().add(l);
+            } else {
+                for (com.univscheduler.model.Equipement eq : equips) {
+                    String icone = eq.isFonctionnel() ? "✅" : "❌";
+                    String texte = icone + " " + eq.getNom();
+                    if (eq.getDescription() != null && !eq.getDescription().isEmpty())
+                        texte += " — " + eq.getDescription();
                     Label lEquip = new Label(texte);
                     lEquip.setFont(Font.font("Arial", 11));
-                    lEquip.setTextFill(fonctionnel
+                    lEquip.setTextFill(eq.isFonctionnel()
                             ? Color.web("#2e7d32") : Color.web("#c62828"));
                     boxEquipements.getChildren().add(lEquip);
                 }
-                if (aucunEquip) {
-                    Label l = new Label("Aucun équipement enregistré pour cette salle");
-                    l.setTextFill(Color.GRAY);
-                    l.setFont(Font.font("Arial", 11));
-                    boxEquipements.getChildren().add(l);
+            }
+
+            // ── Vérifier conflit horaire ──
+            String heureTexte      = champHeure.getText().trim();
+            String dureeTexte      = champDuree.getText().trim();
+            String jourSelectionne = selectJour.getValue();
+
+            if (!heureTexte.isEmpty() && !dureeTexte.isEmpty() && jourSelectionne != null) {
+                try {
+                    String[] parts = heureTexte.split(":");
+                    LocalTime debutNouv = LocalTime.of(
+                        Integer.parseInt(parts[0].trim()),
+                        Integer.parseInt(parts[1].trim()));
+                    int dureeNouv = Integer.parseInt(dureeTexte);
+                    LocalTime finNouv = debutNouv.plusMinutes(dureeNouv);
+
+                    boolean conflit = tousLesCours.stream().anyMatch(c ->
+                        c.getSalle() != null
+                        && c.getSalle().getId() == salleChoisie.getId()
+                        && c.getCreneau().getJour().equalsIgnoreCase(jourSelectionne)
+                        && debutNouv.isBefore(c.getCreneau().getHeureFin())
+                        && finNouv.isAfter(c.getCreneau().getHeureDebut())
+                    );
+
+                    if (conflit) {
+                        Label lblAlerte = new Label("⚠️ Cette salle est déjà occupée sur ce créneau !");
+                        lblAlerte.setTextFill(Color.web("#c62828"));
+                        lblAlerte.setFont(Font.font("Arial", FontWeight.BOLD, 11));
+                        lblAlerte.setStyle("-fx-background-color: #ffebee;"
+                                         + "-fx-padding: 6 10;"
+                                         + "-fx-background-radius: 6;");
+                        boxEquipements.getChildren().add(lblAlerte);
+                    } else {
+                        Label lblLibre = new Label("✅ Salle disponible sur ce créneau !");
+                        lblLibre.setTextFill(Color.web("#2e7d32"));
+                        lblLibre.setFont(Font.font("Arial", FontWeight.BOLD, 11));
+                        lblLibre.setStyle("-fx-background-color: #e8f5e9;"
+                                        + "-fx-padding: 6 10;"
+                                        + "-fx-background-radius: 6;");
+                        boxEquipements.getChildren().add(lblLibre);
+                    }
+                } catch (Exception ex) {
+                    // heure pas encore bien remplie
                 }
-            } catch (Exception ex) {
-                System.err.println("Erreur équipements : " + ex.getMessage());
+            } else {
+                boolean occupee = tousLesCours.stream()
+                    .anyMatch(c -> c.getSalle() != null
+                            && c.getSalle().getId() == salleChoisie.getId());
+                if (occupee) {
+                    Label lblAlerte = new Label("⚠️ Cette salle a des cours — vérifiez l'horaire !");
+                    lblAlerte.setTextFill(Color.web("#e65100"));
+                    lblAlerte.setFont(Font.font("Arial", FontWeight.BOLD, 11));
+                    lblAlerte.setStyle("-fx-background-color: #fff3e0;"
+                                     + "-fx-padding: 6 10;"
+                                     + "-fx-background-radius: 6;");
+                    boxEquipements.getChildren().add(lblAlerte);
+                }
             }
-         // Vérifier si la salle est occupée par un cours existant
-            boolean occupee = tousLesCours.stream()
-                .anyMatch(c -> c.getSalle() != null
-                        && c.getSalle().getId() == salleChoisie.getId());
-            if (occupee) {
-                Label lblAlerte = new Label("⚠️ Cette salle est déjà occupée par un cours !");
-                lblAlerte.setTextFill(Color.web("#c62828"));
-                lblAlerte.setFont(Font.font("Arial", FontWeight.BOLD, 11));
-                lblAlerte.setStyle("-fx-background-color: #ffebee;"
-                                 + "-fx-padding: 6 10;"
-                                 + "-fx-background-radius: 6;");
-                boxEquipements.getChildren().add(lblAlerte);
-            }
-        });
+        }); // ← fin comboSalle.setOnAction
 
         Label msgErreur = new Label("");
         msgErreur.setTextFill(Color.web("#c62828"));
@@ -552,15 +660,17 @@ public class EmploiDuTempsView {
                     || selectJour.getValue() == null
                     || comboSalle.getValue() == null
                     || champHeure.getText().isEmpty()
-                    || champDuree.getText().isEmpty()) {
+                    || champDuree.getText().isEmpty()
+                    || comboUfr.getValue() == null
+                    || comboDep.getValue() == null
+                    || comboNiveau.getValue() == null
+                    || comboGroupe.getValue() == null) {
                 msgErreur.setText("⚠  Veuillez remplir tous les champs.");
                 return;
             }
-            try {
-                String heureTexte = champHeure.getText().trim();
-                String dureeTexte = champDuree.getText().trim();
 
-                String[] heureParts = heureTexte.split(":");
+            try {
+                String[] heureParts = champHeure.getText().trim().split(":");
                 if (heureParts.length != 2) {
                     msgErreur.setText("⚠  Heure invalide. Format attendu : 08:00");
                     return;
@@ -568,72 +678,111 @@ public class EmploiDuTempsView {
                 LocalTime heureDebut = LocalTime.of(
                     Integer.parseInt(heureParts[0].trim()),
                     Integer.parseInt(heureParts[1].trim()));
-                int duree = Integer.parseInt(dureeTexte);
+                int duree = Integer.parseInt(champDuree.getText().trim());
 
-                Salle salle     = comboSalle.getValue();
-                Enseignant ens  = (Enseignant) DashboardView.utilisateurConnecte;
-                Creneau creneau = new Creneau(selectJour.getValue(), heureDebut, duree);
+                int departementId = Integer.parseInt(comboDep.getValue().split("\\|")[0]);
+                String nomDep     = comboDep.getValue().split("\\|")[1];
+                int ufrId         = Integer.parseInt(comboUfr.getValue().split("\\|")[0]);
+                String classe     = comboNiveau.getValue() + " " + nomDep;
+                String groupe     = comboGroupe.getValue();
+
+                Salle salle         = comboSalle.getValue();
+                Enseignant ens      = (Enseignant) DashboardView.utilisateurConnecte;
+                Creneau creneau     = new Creneau(selectJour.getValue(), heureDebut, duree);
 
                 Cours nouveau = new Cours(
                     champMatiere.getText().trim(),
-                    champClasse.getText().trim(),
-                    champGroupe.getText().trim(),
+                    classe,
+                    groupe,
                     ens, salle, creneau);
+                nouveau.setDepartementId(departementId);
+                nouveau.setUfrId(ufrId);
 
                 CoursDAO coursDAO = new CoursDAO();
                 boolean ok = coursDAO.ajouter(nouveau);
+
                 if (ok) {
-                    tousLesCours.add(nouveau);
+                    popup.close();
+                    chargerDepuisBDD();
                     rafraichirGrille();
 
-                    // ── Notifier tous les étudiants ──
-                    UtilisateurDAO utilisateurDAO = new UtilisateurDAO();
-                    List<Etudiant> etudiants = utilisateurDAO.getTousEtudiants();
-                    NotificationDAO notifDAO = new NotificationDAO();
+                    Alert succes = new Alert(Alert.AlertType.INFORMATION);
+                    succes.setTitle("Succès");
+                    succes.setHeaderText(null);
+                    succes.setContentText("✅ Le cours \"" + nouveau.getMatiere()
+                            + "\" a été ajouté avec succès !");
+                    succes.showAndWait();
 
-                    for (Etudiant etu : etudiants) {
-                        notifDAO.ajouter(
-                            "📅 Nouveau cours ajouté",
-                            "Le cours " + nouveau.getMatiere()
-                                + " (" + nouveau.getClasse() + " — " + nouveau.getGroupe() + ")"
-                                + " a été ajouté le " + nouveau.getCreneau().getJour()
-                                + " à " + nouveau.getCreneau().getHeureDebut() + ".",
-                            "COURS", "ETUDIANT", etu.getId()
-                        );
-                    }
+                    new Thread(() -> {
+                        UtilisateurDAO utilisateurDAO = new UtilisateurDAO();
+                        List<Etudiant> etudiants = utilisateurDAO.getTousEtudiants();
+                        NotificationDAO notifDAO = new NotificationDAO();
+                        for (Etudiant etu : etudiants) {
+                            notifDAO.ajouter(
+                                "📅 Nouveau cours ajouté",
+                                "Le cours " + nouveau.getMatiere()
+                                    + " (" + nouveau.getClasse() + " — " + nouveau.getGroupe() + ")"
+                                    + " a été ajouté le " + nouveau.getCreneau().getJour()
+                                    + " à " + nouveau.getCreneau().getHeureDebut() + ".",
+                                "COURS", "ETUDIANT", etu.getId()
+                            );
+                            EmailService.envoyerEmail(
+                                etu.getEmail(),
+                                "📅 Nouveau cours — " + nouveau.getMatiere(),
+                                "Bonjour " + etu.getPrenom() + ",\n\n"
+                                    + "Un nouveau cours a été ajouté :\n"
+                                    + "• Matière : " + nouveau.getMatiere() + "\n"
+                                    + "• Classe  : " + nouveau.getClasse() + "\n"
+                                    + "• Groupe  : " + nouveau.getGroupe() + "\n"
+                                    + "• Jour    : " + nouveau.getCreneau().getJour() + "\n"
+                                    + "• Heure   : " + nouveau.getCreneau().getHeureDebut() + "\n\n"
+                                    + "Cordialement,\nUNIV-SCHEDULER"
+                            );
+                        }
+                    }).start();
+                
+                
 
-                    popup.close();
                 } else {
                     msgErreur.setText("⚠  Erreur lors de l'ajout en base de données.");
                 }
+
             } catch (NumberFormatException ex) {
                 msgErreur.setText("⚠  Durée invalide — entrez un nombre entier. Ex: 120");
             } catch (Exception ex) {
                 msgErreur.setText("⚠  Erreur : " + ex.getMessage());
                 System.err.println("Erreur ajout cours : " + ex.getMessage());
             }
-        });
+         // ── Assemblage du formulaire ──
+        }); // ← fin btnSauver.setOnAction
+
+        // ── Assemblage du formulaire ──
         form.getChildren().addAll(
             titre,
-            new Label("Matière :"),  champMatiere,
-            new Label("Classe :"),   champClasse,
-            new Label("Groupe :"),   champGroupe,
-            new Label("Jour :"),     selectJour,
-            new Label("Heure :"),    champHeure,
-            new Label("Durée :"),    champDuree,
-            lblSalle,                comboSalle,
-            lblEquip,                boxEquipements,
-            msgErreur,               btnSauver
+            new Label("Matière :"), champMatiere,
+            lblUfr, comboUfr,
+            lblDep, comboDep,
+            lblNiveau, comboNiveau,
+            lblGroupe, comboGroupe,
+            new Label("Jour :"), selectJour,
+            new Label("Heure de début :"), champHeure,
+            new Label("Durée (minutes) :"), champDuree,
+            lblSalle, comboSalle,
+            lblEquip, boxEquipements,
+            msgErreur,
+            btnSauver
         );
 
         ScrollPane scroll = new ScrollPane(form);
         scroll.setFitToWidth(true);
         scroll.setStyle("-fx-background-color: white;");
 
-        popup.setScene(new javafx.scene.Scene(scroll, 450, 600));
+        Scene scene = new Scene(scroll, 480, 650);
+        popup.setScene(scene);
         popup.show();
-    }
 
+    } // ← fin ouvrirFormulaireAjoutCours()
+     
     // ════════════════════════════════════════════════════════════
     //  LOGIQUE
     // ════════════════════════════════════════════════════════════

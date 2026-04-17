@@ -59,7 +59,7 @@ public class UtilisateurDAO {
         List<Enseignant> liste = new ArrayList<>();
         String sql = "SELECT u.*, e.specialite, e.departement "
                    + "FROM utilisateurs u "
-                   + "JOIN enseignants e ON u.id = e.id "
+                   + "JOIN enseignants e ON u.id = e.utilisateur_id "
                    + "WHERE u.role = 'ENSEIGNANT' "
                    + "ORDER BY u.nom";
 
@@ -88,11 +88,12 @@ public class UtilisateurDAO {
  // ── READ : Tous les étudiants ────────────────────────────────
     public List<Etudiant> getTousEtudiants() {
         List<Etudiant> liste = new ArrayList<>();
-        String sql = "SELECT u.*, e.classe, e.groupe, e.numero_etudiant "
-                   + "FROM utilisateurs u "
-                   + "JOIN etudiants e ON u.id = e.id "
-                   + "WHERE u.role = 'ETUDIANT' "
-                   + "ORDER BY u.nom";
+        String sql = "SELECT u.*, e.classe, e.groupe, e.numero_etudiant, e.departement_id "
+                + "FROM utilisateurs u "
+                + "JOIN etudiants e ON u.id = e.utilisateur_id "
+                + "WHERE u.role = 'ETUDIANT' "
+                + "ORDER BY u.nom";
+
 
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -110,6 +111,8 @@ public class UtilisateurDAO {
                 );
                 etu.setId(rs.getInt("id"));
                 liste.add(etu);
+                etu.setDepartementId(rs.getInt("departement_id"));
+                etu.setDepartementId(rs.getInt("departement_id"));
             }
 
         } catch (SQLException e) {
@@ -213,7 +216,23 @@ public class UtilisateurDAO {
             default -> null;
         };
 
-        if (u != null) u.setId(id);
+        if (u != null) {
+            u.setId(id);
+
+            // ✅ Charger departement_id pour les étudiants
+            if (u instanceof Etudiant etu) {
+                String sqlDep = "SELECT departement_id FROM etudiants WHERE utilisateur_id = ?";
+                try (PreparedStatement ps = rs.getStatement().getConnection()
+                        .prepareStatement(sqlDep)) {
+                    ps.setInt(1, id);
+                    ResultSet rsDep = ps.executeQuery();
+                    if (rsDep.next()) {
+                        etu.setDepartementId(rsDep.getInt("departement_id"));
+                    }
+                }
+            }
+        }
+
         return u;
     }
 
@@ -223,33 +242,34 @@ public class UtilisateurDAO {
     private void insererDonneesRole(Connection conn,
                                      Utilisateur utilisateur) throws SQLException {
         switch (utilisateur.getRole()) {
-            case "ENSEIGNANT" -> {
-                Enseignant ens = (Enseignant) utilisateur;
-                PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO enseignants (id, specialite, departement) VALUES (?,?,?)");
-                ps.setInt(1,    ens.getId());
-                ps.setString(2, ens.getSpecialite());
-                ps.setString(3, ens.getDepartement());
-                ps.executeUpdate();
-            }
-            case "ETUDIANT" -> {
-                Etudiant etu = (Etudiant) utilisateur;
-                PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO etudiants (id, classe, groupe, numero_etudiant) VALUES (?,?,?,?)");
-                ps.setInt(1,    etu.getId());
-                ps.setString(2, etu.getClasse());
-                ps.setString(3, etu.getGroupe());
-                ps.setString(4, etu.getNumeroEtudiant());
-                ps.executeUpdate();
-            }
-            case "GESTIONNAIRE" -> {
-                GestionnaireEmploiDuTemps g = (GestionnaireEmploiDuTemps) utilisateur;
-                PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO gestionnaires (id, service) VALUES (?,?)");
-                ps.setInt(1,    g.getId());
-                ps.setString(2, g.getService());
-                ps.executeUpdate();
-            }
+
+        case "ENSEIGNANT" -> {
+            Enseignant ens = (Enseignant) utilisateur;
+            PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO enseignants (utilisateur_id, specialite, departement) VALUES (?,?,?)");
+            ps.setInt(1,    ens.getId());
+            ps.setString(2, ens.getSpecialite());
+            ps.setString(3, ens.getDepartement());
+            ps.executeUpdate();
+        }
+        case "ETUDIANT" -> {
+            Etudiant etu = (Etudiant) utilisateur;
+            PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO etudiants (utilisateur_id, classe, groupe, numero_etudiant) VALUES (?,?,?,?)");
+            ps.setInt(1,    etu.getId());
+            ps.setString(2, etu.getClasse());
+            ps.setString(3, etu.getGroupe());
+            ps.setString(4, etu.getNumeroEtudiant());
+            ps.executeUpdate();
+        }
+        case "GESTIONNAIRE" -> {
+            GestionnaireEmploiDuTemps g = (GestionnaireEmploiDuTemps) utilisateur;
+            PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO gestionnaires (utilisateur_id, service) VALUES (?,?)");
+            ps.setInt(1,    g.getId());
+            ps.setString(2, g.getService());
+            ps.executeUpdate();
+        }
         }
     }
 }
